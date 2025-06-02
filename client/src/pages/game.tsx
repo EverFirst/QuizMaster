@@ -5,7 +5,7 @@ import { QuizQuestion, GameState } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, X, Clock } from "lucide-react";
 import { LoadingOverlay } from "@/components/loading-overlay";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,6 +25,8 @@ export default function Game() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isAnswered, setIsAnswered] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(30); // 30초 제한시간
+  const [timerActive, setTimerActive] = useState(false);
 
   const { data: questions, isLoading } = useQuery<QuizQuestion[]>({
     queryKey: [`/api/quiz/${category}`],
@@ -61,8 +63,55 @@ export default function Game() {
         answers: [],
         startTime: Date.now(),
       });
+      
+      setTimeLeft(30);
+      setTimerActive(true);
     }
   }, [questions, category, gameState]);
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (timerActive && timeLeft > 0 && !isAnswered) {
+      interval = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            // Time's up - auto-submit wrong answer
+            handleTimeUp();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => clearInterval(interval);
+  }, [timerActive, timeLeft, isAnswered]);
+
+  const handleTimeUp = () => {
+    if (!gameState || isAnswered) return;
+    
+    // Auto-select wrong answer when time runs out
+    const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+    const wrongAnswer = currentQuestion.correctAnswer === 0 ? 1 : 0;
+    
+    setSelectedAnswer(wrongAnswer);
+    setIsAnswered(true);
+    setShowFeedback(true);
+    setTimerActive(false);
+
+    const newAnswer = {
+      questionId: currentQuestion.id,
+      selectedAnswer: wrongAnswer,
+      isCorrect: false,
+    };
+
+    setGameState(prev => prev ? {
+      ...prev,
+      answers: [...prev.answers, newAnswer]
+    } : null);
+  };
 
   const handleAnswerSelect = (answerIndex: number) => {
     if (isAnswered || !gameState) return;
@@ -70,6 +119,7 @@ export default function Game() {
     setSelectedAnswer(answerIndex);
     setIsAnswered(true);
     setShowFeedback(true);
+    setTimerActive(false);
 
     const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
     const isCorrect = answerIndex === currentQuestion.correctAnswer;
@@ -130,6 +180,8 @@ export default function Game() {
       setSelectedAnswer(null);
       setShowFeedback(false);
       setIsAnswered(false);
+      setTimeLeft(30);
+      setTimerActive(true);
     }
   };
 
@@ -175,8 +227,35 @@ export default function Game() {
             </div>
 
             <div className="text-right">
-              <p className="text-sm text-gray-500">점수</p>
-              <p className="text-lg font-bold text-blue-600">{gameState.score}점</p>
+              <div className="flex items-center space-x-4">
+                {/* Timer Display */}
+                <div className="text-center">
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full border-4 ${
+                    timeLeft <= 10 
+                      ? 'border-red-400 bg-red-50 animate-pulse' 
+                      : timeLeft <= 20 
+                        ? 'border-amber-400 bg-amber-50' 
+                        : 'border-blue-400 bg-blue-50'
+                  }`}>
+                    <span className={`text-lg font-bold ${
+                      timeLeft <= 10 
+                        ? 'text-red-600' 
+                        : timeLeft <= 20 
+                          ? 'text-amber-600' 
+                          : 'text-blue-600'
+                    }`}>
+                      {timeLeft}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">초</p>
+                </div>
+                
+                {/* Score Display */}
+                <div>
+                  <p className="text-sm text-gray-500">점수</p>
+                  <p className="text-lg font-bold text-blue-600">{gameState.score}점</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -253,7 +332,7 @@ export default function Game() {
                       <Check className="text-emerald-600" size={16} />
                     </div>
                     <div>
-                      <p className="text-emerald-800 font-semibold">정답입니다! 🎉</p>
+                      <p className="text-emerald-800 font-semibold">정답입니다!</p>
                       <p className="text-emerald-700 text-sm mt-1">잘하셨습니다. 다음 문제로 넘어가세요.</p>
                     </div>
                   </div>
@@ -265,7 +344,9 @@ export default function Game() {
                       <X className="text-red-600" size={16} />
                     </div>
                     <div>
-                      <p className="text-red-800 font-semibold">틀렸습니다</p>
+                      <p className="text-red-800 font-semibold">
+                        {timeLeft === 0 ? "시간 종료!" : "틀렸습니다"}
+                      </p>
                       <p className="text-red-700 text-sm mt-1">
                         정답은 <strong>{currentQuestion.options[currentQuestion.correctAnswer]}</strong>입니다.
                       </p>
