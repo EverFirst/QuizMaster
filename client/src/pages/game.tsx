@@ -27,7 +27,7 @@ export default function Game() {
   const [isAnswered, setIsAnswered] = useState(false);
 
   const { data: questions, isLoading } = useQuery<QuizQuestion[]>({
-    queryKey: ["/api/quiz", category],
+    queryKey: [`/api/quiz/${category}`],
     enabled: !!category && ["general", "history", "science"].includes(category),
   });
 
