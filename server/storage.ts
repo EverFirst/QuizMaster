@@ -17,6 +17,7 @@ export interface IStorage {
   // Quiz questions
   getQuestionsByCategory(category: string): Promise<QuizQuestion[]>;
   getAllQuestions(): Promise<QuizQuestion[]>;
+  addQuestion(question: InsertQuizQuestion): Promise<QuizQuestion>;
   
   // Game history
   saveGameHistory(game: InsertGameHistory): Promise<GameHistory>;
@@ -45,6 +46,14 @@ export class DatabaseStorage implements IStorage {
 
   async getAllQuestions(): Promise<QuizQuestion[]> {
     return await db.select().from(quizQuestions);
+  }
+
+  async addQuestion(question: InsertQuizQuestion): Promise<QuizQuestion> {
+    const [savedQuestion] = await db
+      .insert(quizQuestions)
+      .values(question)
+      .returning();
+    return savedQuestion;
   }
 
   async saveGameHistory(game: InsertGameHistory): Promise<GameHistory> {
@@ -209,6 +218,16 @@ export class MemStorage implements IStorage {
 
   async getAllQuestions(): Promise<QuizQuestion[]> {
     return Array.from(this.questions.values());
+  }
+
+  async addQuestion(question: InsertQuizQuestion): Promise<QuizQuestion> {
+    const id = this.currentQuestionId++;
+    const newQuestion: QuizQuestion = {
+      ...question,
+      id
+    };
+    this.questions.set(id, newQuestion);
+    return newQuestion;
   }
 
   async saveGameHistory(game: InsertGameHistory): Promise<GameHistory> {

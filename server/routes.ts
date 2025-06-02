@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertGameHistorySchema, insertGameAnswerSchema } from "@shared/schema";
+import { insertGameHistorySchema, insertGameAnswerSchema, insertQuizQuestionSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -42,6 +42,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching history:", error);
       res.status(500).json({ error: "Failed to fetch game history" });
+    }
+  });
+
+  // Get all questions for admin
+  app.get("/api/quiz/all", async (req, res) => {
+    try {
+      const questions = await storage.getAllQuestions();
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching all questions:", error);
+      res.status(500).json({ error: "Failed to fetch questions" });
+    }
+  });
+
+  // Add new question (admin only)
+  app.post("/api/admin/questions", async (req, res) => {
+    try {
+      const questionData = insertQuizQuestionSchema.parse(req.body);
+      const savedQuestion = await storage.addQuestion(questionData);
+      res.json(savedQuestion);
+    } catch (error) {
+      console.error("Error adding question:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid question data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to add question" });
     }
   });
 

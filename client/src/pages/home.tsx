@@ -76,6 +76,13 @@ export default function Home() {
                 <Brain className="text-white" size={20} />
               </div>
               <h1 className="text-3xl font-bold text-gray-900">퀴즈 챌린지</h1>
+              <button
+                onClick={() => setLocation('/admin')}
+                className="ml-4 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                title="관리자 모드"
+              >
+                관리자
+              </button>
             </div>
             <p className="text-gray-600 text-lg">지식을 테스트하고 새로운 것을 배워보세요</p>
           </div>
