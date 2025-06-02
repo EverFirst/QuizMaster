@@ -196,8 +196,11 @@ export class MemStorage implements IStorage {
         id: this.currentQuestionId++,
         category: data.category,
         question: data.question,
+        type: 'multiple_choice',
         options: data.options,
-        correctAnswer: data.correctAnswer
+        correctAnswer: data.correctAnswer,
+        correctAnswers: null,
+        hints: null
       };
       this.questions.set(question.id, question);
     });
@@ -224,7 +227,12 @@ export class MemStorage implements IStorage {
     const id = this.currentQuestionId++;
     const newQuestion: QuizQuestion = {
       ...question,
-      id
+      id,
+      type: question.type || 'multiple_choice',
+      options: question.options || null,
+      correctAnswer: question.correctAnswer || null,
+      correctAnswers: question.correctAnswers || null,
+      hints: question.hints || null
     };
     this.questions.set(id, newQuestion);
     return newQuestion;

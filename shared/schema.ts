@@ -6,8 +6,11 @@ export const quizQuestions = pgTable("quiz_questions", {
   id: serial("id").primaryKey(),
   category: text("category").notNull(),
   question: text("question").notNull(),
-  options: text("options").array().notNull(),
-  correctAnswer: integer("correct_answer").notNull(),
+  type: text("type").notNull().default("multiple_choice"), // 'multiple_choice' or 'fill_blank'
+  options: text("options").array(), // nullable for fill_blank questions
+  correctAnswer: integer("correct_answer"), // nullable for fill_blank questions
+  correctAnswers: text("correct_answers").array(), // for fill_blank questions
+  hints: text("hints").array(), // hints for fill_blank questions
 });
 
 export const gameHistory = pgTable("game_history", {
@@ -24,8 +27,10 @@ export const gameAnswers = pgTable("game_answers", {
   id: serial("id").primaryKey(),
   gameId: integer("game_id").notNull(),
   questionId: integer("question_id").notNull(),
-  selectedAnswer: integer("selected_answer").notNull(),
+  selectedAnswer: integer("selected_answer"), // nullable for fill_blank questions
+  userAnswer: text("user_answer"), // for fill_blank questions
   isCorrect: integer("is_correct").notNull(), // 0 or 1 as boolean
+  partialScore: integer("partial_score"), // for partial points in fill_blank
 });
 
 export const insertQuizQuestionSchema = createInsertSchema(quizQuestions).omit({
