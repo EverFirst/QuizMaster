@@ -25,9 +25,12 @@ export default function Admin() {
   // Form state for adding questions
   const [newQuestion, setNewQuestion] = useState<InsertQuizQuestion>({
     category: "general",
+    type: "multiple_choice",
     question: "",
     options: ["", "", "", ""],
-    correctAnswer: 0
+    correctAnswer: 0,
+    correctAnswers: [],
+    hints: []
   });
 
   const ADMIN_PASSWORD = "admin123"; // 간단한 패스워드
@@ -77,9 +80,12 @@ export default function Admin() {
       // Reset form
       setNewQuestion({
         category: "general",
+        type: "multiple_choice",
         question: "",
         options: ["", "", "", ""],
-        correctAnswer: 0
+        correctAnswer: 0,
+        correctAnswers: [],
+        hints: []
       });
       
       // Invalidate queries to refresh data
@@ -276,6 +282,34 @@ export default function Admin() {
                   </Select>
                 </div>
 
+                {/* Question Type Selection */}
+                <div>
+                  <Label htmlFor="type">문제 유형</Label>
+                  <Select
+                    value={newQuestion.type}
+                    onValueChange={(value) => {
+                      const newType = value as "multiple_choice" | "fill_blank";
+                      setNewQuestion(prev => ({
+                        ...prev,
+                        type: newType,
+                        // Reset form fields when type changes
+                        options: newType === "multiple_choice" ? ["", "", "", ""] : [],
+                        correctAnswer: newType === "multiple_choice" ? 0 : undefined,
+                        correctAnswers: newType === "fill_blank" ? [] : [],
+                        hints: newType === "fill_blank" ? [] : []
+                      }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="multiple_choice">객관식 (4지선다)</SelectItem>
+                      <SelectItem value="fill_blank">빈칸채우기</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* AI Generate Button */}
                 <div className="flex justify-center">
                   <Button
@@ -296,43 +330,146 @@ export default function Admin() {
                     id="question"
                     value={newQuestion.question}
                     onChange={(e) => setNewQuestion(prev => ({ ...prev, question: e.target.value }))}
-                    placeholder="문제를 입력하거나 위의 AI 생성 버튼을 클릭하세요"
+                    placeholder={
+                      newQuestion.type === "fill_blank" 
+                        ? "빈칸 위치에 ______ 를 사용하세요. 예: 대한민국의 수도는 ______이다."
+                        : "문제를 입력하거나 위의 AI 생성 버튼을 클릭하세요"
+                    }
                     rows={3}
                     required
                   />
+                  {newQuestion.type === "fill_blank" && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      💡 빈칸 위치에 반드시 ______ (언더바 6개)를 사용해주세요
+                    </p>
+                  )}
                 </div>
 
-                {/* Options */}
-                <div>
-                  <Label>선택지</Label>
-                  <div className="space-y-3 mt-2">
-                    {newQuestion.options.map((option, index) => (
-                      <div key={index} className="flex items-center space-x-3">
-                        <div className="flex items-center">
-                          <input
-                            type="radio"
-                            name="correctAnswer"
-                            checked={newQuestion.correctAnswer === index}
-                            onChange={() => setNewQuestion(prev => ({ ...prev, correctAnswer: index }))}
-                            className="mr-2"
+                {/* Conditional Fields based on Question Type */}
+                {newQuestion.type === "multiple_choice" ? (
+                  <div>
+                    <Label>선택지</Label>
+                    <div className="space-y-3 mt-2">
+                      {newQuestion.options?.map((option, index) => (
+                        <div key={index} className="flex items-center space-x-3">
+                          <div className="flex items-center">
+                            <input
+                              type="radio"
+                              name="correctAnswer"
+                              checked={newQuestion.correctAnswer === index}
+                              onChange={() => setNewQuestion(prev => ({ ...prev, correctAnswer: index }))}
+                              className="mr-2"
+                            />
+                            <span className="font-medium text-gray-700">
+                              {String.fromCharCode(65 + index)}
+                            </span>
+                          </div>
+                          <Input
+                            value={option}
+                            onChange={(e) => updateOption(index, e.target.value)}
+                            placeholder={`선택지 ${String.fromCharCode(65 + index)}`}
+                            required
                           />
-                          <span className="font-medium text-gray-700">
-                            {String.fromCharCode(65 + index)}
-                          </span>
                         </div>
-                        <Input
-                          value={option}
-                          onChange={(e) => updateOption(index, e.target.value)}
-                          placeholder={`선택지 ${String.fromCharCode(65 + index)}`}
-                          required
-                        />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      정답에 해당하는 선택지의 라디오 버튼을 선택하세요
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-500 mt-2">
-                    정답에 해당하는 선택지의 라디오 버튼을 선택하세요
-                  </p>
-                </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Fill Blank - Correct Answers */}
+                    <div>
+                      <Label>정답 입력 (여러 개 가능)</Label>
+                      <div className="space-y-2 mt-2">
+                        {newQuestion.correctAnswers?.map((answer, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <Input
+                              value={answer}
+                              onChange={(e) => {
+                                const newAnswers = [...(newQuestion.correctAnswers || [])];
+                                newAnswers[index] = e.target.value;
+                                setNewQuestion(prev => ({ ...prev, correctAnswers: newAnswers }));
+                              }}
+                              placeholder={`정답 ${index + 1}`}
+                              required={index === 0}
+                            />
+                            {index > 0 && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const newAnswers = newQuestion.correctAnswers?.filter((_, i) => i !== index);
+                                  setNewQuestion(prev => ({ ...prev, correctAnswers: newAnswers }));
+                                }}
+                              >
+                                삭제
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newAnswers = [...(newQuestion.correctAnswers || []), ""];
+                            setNewQuestion(prev => ({ ...prev, correctAnswers: newAnswers }));
+                          }}
+                        >
+                          + 정답 추가
+                        </Button>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-2">
+                        동의어나 다른 표현도 정답으로 인정됩니다
+                      </p>
+                    </div>
+
+                    {/* Fill Blank - Hints */}
+                    <div>
+                      <Label>힌트 (선택사항)</Label>
+                      <div className="space-y-2 mt-2">
+                        {newQuestion.hints?.map((hint, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <Input
+                              value={hint}
+                              onChange={(e) => {
+                                const newHints = [...(newQuestion.hints || [])];
+                                newHints[index] = e.target.value;
+                                setNewQuestion(prev => ({ ...prev, hints: newHints }));
+                              }}
+                              placeholder={`힌트 ${index + 1}`}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const newHints = newQuestion.hints?.filter((_, i) => i !== index);
+                                setNewQuestion(prev => ({ ...prev, hints: newHints }));
+                              }}
+                            >
+                              삭제
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newHints = [...(newQuestion.hints || []), ""];
+                            setNewQuestion(prev => ({ ...prev, hints: newHints }));
+                          }}
+                        >
+                          + 힌트 추가
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <Button 
                   type="submit" 
