@@ -5,6 +5,17 @@ import { insertGameHistorySchema, insertGameAnswerSchema, insertQuizQuestionSche
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Get all questions for admin (must come before the category route)
+  app.get("/api/quiz/all", async (req, res) => {
+    try {
+      const questions = await storage.getAllQuestions();
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching all questions:", error);
+      res.status(500).json({ error: "Failed to fetch questions" });
+    }
+  });
+
   // Get quiz questions by category
   app.get("/api/quiz/:category", async (req, res) => {
     try {
@@ -42,17 +53,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching history:", error);
       res.status(500).json({ error: "Failed to fetch game history" });
-    }
-  });
-
-  // Get all questions for admin
-  app.get("/api/quiz/all", async (req, res) => {
-    try {
-      const questions = await storage.getAllQuestions();
-      res.json(questions);
-    } catch (error) {
-      console.error("Error fetching all questions:", error);
-      res.status(500).json({ error: "Failed to fetch questions" });
     }
   });
 
