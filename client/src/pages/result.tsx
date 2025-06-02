@@ -12,14 +12,17 @@ type GameResult = {
   accuracy: number;
   answers: Array<{
     questionId: number;
-    selectedAnswer: number;
+    selectedAnswer?: number;
+    userAnswer?: string;
     isCorrect: boolean;
   }>;
   questions: Array<{
     id: number;
     question: string;
-    options: string[];
-    correctAnswer: number;
+    type?: string;
+    options?: string[];
+    correctAnswer?: number;
+    correctAnswers?: string[];
   }>;
 };
 
@@ -187,11 +190,24 @@ export default function Result() {
                         Q{index + 1}. {question.question}
                       </p>
                       <p className="text-sm text-gray-600">
-                        정답: {question.options[question.correctAnswer]}
-                        {!isCorrect && answer && (
-                          <span className="text-red-600">
-                            {" "}(선택: {question.options[answer.selectedAnswer]})
-                          </span>
+                        {question.type === 'fill_blank' ? (
+                          <>
+                            정답: {question.correctAnswers?.join(', ') || '정답 없음'}
+                            {!isCorrect && answer && answer.userAnswer && (
+                              <span className="text-red-600">
+                                {" "}(입력: {answer.userAnswer})
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            정답: {question.options?.[question.correctAnswer || 0] || '정답 없음'}
+                            {!isCorrect && answer && answer.selectedAnswer !== undefined && (
+                              <span className="text-red-600">
+                                {" "}(선택: {question.options?.[answer.selectedAnswer] || '선택 없음'})
+                              </span>
+                            )}
+                          </>
                         )}
                       </p>
                     </div>

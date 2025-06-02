@@ -61,7 +61,8 @@ export type GameState = {
   score: number;
   answers: {
     questionId: number;
-    selectedAnswer: number;
+    selectedAnswer?: number;
+    userAnswer?: string;
     isCorrect: boolean;
   }[];
   startTime: number;
