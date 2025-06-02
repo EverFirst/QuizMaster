@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trophy, Target, Clock, TrendingUp, RotateCcw, Home, Share } from "lucide-react";
+import { Trophy, Target, Clock, TrendingUp, RotateCcw, Home, Share, X } from "lucide-react";
 
 type GameResult = {
   category: string;
