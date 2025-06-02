@@ -5,8 +5,13 @@ import {
   InsertGameHistory,
   GameAnswer,
   InsertGameAnswer,
-  QuizStats
+  QuizStats,
+  quizQuestions,
+  gameHistory,
+  gameAnswers
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   // Quiz questions
@@ -23,6 +28,99 @@ export interface IStorage {
   
   // Stats
   getQuizStats(): Promise<QuizStats>;
+}
+
+export class DatabaseStorage implements IStorage {
+  async getQuestionsByCategory(category: string): Promise<QuizQuestion[]> {
+    const questions = await db.select().from(quizQuestions).where(eq(quizQuestions.category, category));
+    
+    // Shuffle questions
+    for (let i = questions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [questions[i], questions[j]] = [questions[j], questions[i]];
+    }
+    
+    return questions;
+  }
+
+  async getAllQuestions(): Promise<QuizQuestion[]> {
+    return await db.select().from(quizQuestions);
+  }
+
+  async saveGameHistory(game: InsertGameHistory): Promise<GameHistory> {
+    const [savedGame] = await db
+      .insert(gameHistory)
+      .values(game)
+      .returning();
+    return savedGame;
+  }
+
+  async getGameHistory(limit: number = 5): Promise<GameHistory[]> {
+    return await db
+      .select()
+      .from(gameHistory)
+      .orderBy(desc(gameHistory.createdAt))
+      .limit(limit);
+  }
+
+  async getBestScore(category?: string): Promise<number> {
+    if (category) {
+      const games = await db
+        .select()
+        .from(gameHistory)
+        .where(eq(gameHistory.category, category));
+      
+      return games.length > 0 
+        ? Math.max(...games.map(g => g.score)) 
+        : 0;
+    }
+    
+    const games = await db.select().from(gameHistory);
+    return games.length > 0 
+      ? Math.max(...games.map(g => g.score)) 
+      : 0;
+  }
+
+  async saveGameAnswers(answers: InsertGameAnswer[]): Promise<void> {
+    if (answers.length > 0) {
+      await db.insert(gameAnswers).values(answers);
+    }
+  }
+
+  async getQuizStats(): Promise<QuizStats> {
+    const games = await db.select().from(gameHistory);
+    
+    if (games.length === 0) {
+      return {
+        bestScore: 0,
+        averageScore: 0,
+        totalGames: 0,
+        bestScores: {
+          general: 0,
+          history: 0,
+          science: 0
+        }
+      };
+    }
+
+    const bestScore = Math.max(...games.map(g => g.score));
+    const averageScore = Math.round(
+      games.reduce((sum, g) => sum + g.score, 0) / games.length
+    );
+
+    const bestScores = {
+      general: await this.getBestScore('일반상식'),
+      history: await this.getBestScore('역사'),
+      science: await this.getBestScore('과학')
+    };
+
+    return {
+      bestScore,
+      averageScore,
+      totalGames: games.length,
+      bestScores
+    };
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -190,4 +288,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
