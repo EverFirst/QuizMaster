@@ -60,13 +60,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate question using AI
   app.post("/api/admin/generate-question", async (req, res) => {
     try {
-      const { category } = req.body;
+      const { category, type } = req.body;
       
       if (!category || !['general', 'history', 'science'].includes(category)) {
         return res.status(400).json({ error: "Valid category is required" });
       }
 
-      const generatedQuestion = await generateQuizQuestion(category);
+      if (!type || !['multiple_choice', 'fill_blank'].includes(type)) {
+        return res.status(400).json({ error: "Valid question type is required" });
+      }
+
+      const generatedQuestion = await generateQuizQuestion(category, type);
       res.json(generatedQuestion);
     } catch (error) {
       console.error("Error generating question:", error);

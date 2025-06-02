@@ -41,16 +41,18 @@ export default function Admin() {
   });
 
   const generateQuestionMutation = useMutation({
-    mutationFn: async (category: string) => {
-      const response = await apiRequest("POST", "/api/admin/generate-question", { category });
+    mutationFn: async (params: { category: string; type: string }) => {
+      const response = await apiRequest("POST", "/api/admin/generate-question", params);
       return response.json();
     },
     onSuccess: (generatedQuestion: any) => {
       setNewQuestion({
-        category: newQuestion.category,
+        ...newQuestion,
         question: generatedQuestion.question,
-        options: generatedQuestion.options,
-        correctAnswer: generatedQuestion.correctAnswer
+        options: generatedQuestion.options || [],
+        correctAnswer: generatedQuestion.correctAnswer,
+        correctAnswers: generatedQuestion.correctAnswers || [],
+        hints: generatedQuestion.hints || []
       });
       toast({
         title: "문제 생성 완료",
@@ -315,7 +317,10 @@ export default function Admin() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => generateQuestionMutation.mutate(newQuestion.category)}
+                    onClick={() => generateQuestionMutation.mutate({ 
+                      category: newQuestion.category, 
+                      type: newQuestion.type || "multiple_choice"
+                    })}
                     disabled={generateQuestionMutation.isPending}
                     className="bg-gradient-to-r from-purple-500 to-blue-500 text-white border-0 hover:from-purple-600 hover:to-blue-600"
                   >
