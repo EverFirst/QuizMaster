@@ -70,7 +70,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Valid question type is required" });
       }
 
-      const generatedQuestion = await generateQuizQuestion(category, type);
+      // 기존 문제들을 가져와서 중복 방지
+      const existingQuestions = await storage.getQuestionsByCategory(category);
+      const existingQuestionTexts = existingQuestions.map(q => q.question);
+
+      const generatedQuestion = await generateQuizQuestion(category, type, existingQuestionTexts);
       res.json(generatedQuestion);
     } catch (error) {
       console.error("Error generating question:", error);
