@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertGameHistorySchema, insertGameAnswerSchema, insertQuizQuestionSchema } from "@shared/schema";
+import { generateQuizQuestion } from "./openai";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -53,6 +54,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching history:", error);
       res.status(500).json({ error: "Failed to fetch game history" });
+    }
+  });
+
+  // Generate question using AI
+  app.post("/api/admin/generate-question", async (req, res) => {
+    try {
+      const { category } = req.body;
+      
+      if (!category || !['general', 'history', 'science'].includes(category)) {
+        return res.status(400).json({ error: "Valid category is required" });
+      }
+
+      const generatedQuestion = await generateQuizQuestion(category);
+      res.json(generatedQuestion);
+    } catch (error) {
+      console.error("Error generating question:", error);
+      res.status(500).json({ error: "문제 생성에 실패했습니다: " + (error as Error).message });
     }
   });
 

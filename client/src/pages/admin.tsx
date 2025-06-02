@@ -37,6 +37,32 @@ export default function Admin() {
     enabled: isAuthenticated,
   });
 
+  const generateQuestionMutation = useMutation({
+    mutationFn: async (category: string) => {
+      return apiRequest("POST", "/api/admin/generate-question", { category });
+    },
+    onSuccess: (generatedQuestion: any) => {
+      setNewQuestion({
+        category: newQuestion.category,
+        question: generatedQuestion.question,
+        options: generatedQuestion.options,
+        correctAnswer: generatedQuestion.correctAnswer
+      });
+      toast({
+        title: "문제 생성 완료",
+        description: "AI가 새로운 문제를 생성했습니다. 검토 후 저장해주세요.",
+      });
+    },
+    onError: (error) => {
+      console.error("Failed to generate question:", error);
+      toast({
+        title: "문제 생성 실패",
+        description: "AI 문제 생성에 실패했습니다. 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const addQuestionMutation = useMutation({
     mutationFn: async (question: InsertQuizQuestion) => {
       return apiRequest("POST", "/api/admin/questions", question);
@@ -249,6 +275,19 @@ export default function Admin() {
                   </Select>
                 </div>
 
+                {/* AI Generate Button */}
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => generateQuestionMutation.mutate(newQuestion.category)}
+                    disabled={generateQuestionMutation.isPending}
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 text-white border-0 hover:from-purple-600 hover:to-blue-600"
+                  >
+                    {generateQuestionMutation.isPending ? "AI 생성 중..." : "🤖 AI로 문제 생성"}
+                  </Button>
+                </div>
+
                 {/* Question Input */}
                 <div>
                   <Label htmlFor="question">문제</Label>
@@ -256,7 +295,7 @@ export default function Admin() {
                     id="question"
                     value={newQuestion.question}
                     onChange={(e) => setNewQuestion(prev => ({ ...prev, question: e.target.value }))}
-                    placeholder="문제를 입력하세요"
+                    placeholder="문제를 입력하거나 위의 AI 생성 버튼을 클릭하세요"
                     rows={3}
                     required
                   />
