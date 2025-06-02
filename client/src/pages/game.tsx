@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, Check, X, Clock } from "lucide-react";
 import { LoadingOverlay } from "@/components/loading-overlay";
+import { FillBlankQuestion } from "@/components/fill-blank-question";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -23,6 +24,7 @@ export default function Game() {
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [userAnswer, setUserAnswer] = useState<string>("");
   const [showFeedback, setShowFeedback] = useState(false);
   const [isAnswered, setIsAnswered] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30); // 30초 제한시간
@@ -285,42 +287,74 @@ export default function Game() {
             </div>
           </div>
 
-          {/* Answer Options */}
-          <div className="space-y-4 mb-8">
-            {currentQuestion.options.map((option, index) => {
-              let buttonClass = "w-full text-left p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group";
-              
-              if (isAnswered) {
-                if (index === currentQuestion.correctAnswer) {
-                  buttonClass = "w-full text-left p-4 border-2 border-emerald-400 bg-emerald-50 rounded-xl";
-                } else if (index === selectedAnswer && index !== currentQuestion.correctAnswer) {
-                  buttonClass = "w-full text-left p-4 border-2 border-red-400 bg-red-50 rounded-xl";
-                } else {
-                  buttonClass = "w-full text-left p-4 border-2 border-gray-200 rounded-xl opacity-50";
+          {/* Answer Section - conditional rendering based on question type */}
+          {currentQuestion.type === 'fill_blank' ? (
+            <FillBlankQuestion
+              question={{
+                id: currentQuestion.id,
+                question: currentQuestion.question,
+                correctAnswers: currentQuestion.correctAnswers || [],
+                hints: currentQuestion.hints || []
+              }}
+              onAnswer={(answer, isCorrect, score) => {
+                setUserAnswer(answer);
+                setIsAnswered(true);
+                setShowFeedback(true);
+                setTimerActive(false);
+                
+                const updatedGameState = {
+                  ...gameState,
+                  score: gameState.score + (isCorrect ? score : 0),
+                  answers: [
+                    ...gameState.answers,
+                    {
+                      questionId: currentQuestion.id,
+                      selectedAnswer: -1, // Not applicable for fill_blank
+                      isCorrect
+                    }
+                  ]
+                };
+                setGameState(updatedGameState);
+              }}
+              timeLeft={timeLeft}
+            />
+          ) : (
+            <div className="space-y-4 mb-8">
+              {currentQuestion.options?.map((option, index) => {
+                let buttonClass = "w-full text-left p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group";
+                
+                if (isAnswered) {
+                  if (index === currentQuestion.correctAnswer) {
+                    buttonClass = "w-full text-left p-4 border-2 border-emerald-400 bg-emerald-50 rounded-xl";
+                  } else if (index === selectedAnswer && index !== currentQuestion.correctAnswer) {
+                    buttonClass = "w-full text-left p-4 border-2 border-red-400 bg-red-50 rounded-xl";
+                  } else {
+                    buttonClass = "w-full text-left p-4 border-2 border-gray-200 rounded-xl opacity-50";
+                  }
                 }
-              }
 
-              return (
-                <button
-                  key={index}
-                  onClick={() => handleAnswerSelect(index)}
-                  disabled={isAnswered}
-                  className={buttonClass}
-                >
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 border-2 border-gray-300 rounded-full flex items-center justify-center mr-4 group-hover:border-blue-400 transition-colors">
-                      <span className="text-gray-600 font-medium group-hover:text-blue-600">
-                        {optionLabels[index]}
+                return (
+                  <button
+                    key={index}
+                    onClick={() => handleAnswerSelect(index)}
+                    disabled={isAnswered}
+                    className={buttonClass}
+                  >
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 border-2 border-gray-300 rounded-full flex items-center justify-center mr-4 group-hover:border-blue-400 transition-colors">
+                        <span className="text-gray-600 font-medium group-hover:text-blue-600">
+                          {optionLabels[index]}
+                        </span>
+                      </div>
+                      <span className="text-gray-900 font-medium group-hover:text-gray-700">
+                        {option}
                       </span>
                     </div>
-                    <span className="text-gray-900 font-medium group-hover:text-gray-700">
-                      {option}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Feedback Section */}
           {showFeedback && (
