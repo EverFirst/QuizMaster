@@ -222,11 +222,10 @@ export default function Game() {
               }
 
               return (
-                <Button
+                <button
                   key={index}
                   onClick={() => handleAnswerSelect(index)}
                   disabled={isAnswered}
-                  variant="ghost"
                   className={buttonClass}
                 >
                   <div className="flex items-center">
@@ -239,7 +238,7 @@ export default function Game() {
                       {option}
                     </span>
                   </div>
-                </Button>
+                </button>
               );
             })}
           </div>
