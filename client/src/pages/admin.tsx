@@ -39,7 +39,8 @@ export default function Admin() {
 
   const generateQuestionMutation = useMutation({
     mutationFn: async (category: string) => {
-      return apiRequest("POST", "/api/admin/generate-question", { category });
+      const response = await apiRequest("POST", "/api/admin/generate-question", { category });
+      return response.json();
     },
     onSuccess: (generatedQuestion: any) => {
       setNewQuestion({
